@@ -16,13 +16,13 @@ pip install -r base-evals/requirements.txt
 Smoke test:
 
 ```bash
-python base-evals/prepare_data.py --datasets dtd --limit 8 --overwrite
+base-evals/submit_prepare.sh
 ```
 
 Full Slurm job:
 
 ```bash
-sbatch base-evals/prepare.sbatch
+FULL=1 DATASETS=imagenet_a,dtd,seed,ai2d base-evals/submit_prepare.sh
 ```
 
 ## Evaluate
@@ -30,13 +30,13 @@ sbatch base-evals/prepare.sbatch
 Smoke test on the Slurm array:
 
 ```bash
-LIMIT=8 sbatch base-evals/eval_array.sbatch
+base-evals/submit_eval.sh
 ```
 
 Full eval:
 
 ```bash
-sbatch base-evals/eval_array.sbatch
+FULL=1 DATASETS=imagenet_a,dtd,seed,ai2d base-evals/submit_eval.sh
 ```
 
 Results are written to `base-evals/results/`.

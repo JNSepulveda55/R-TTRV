@@ -4,13 +4,13 @@
 #SBATCH --time=12:00:00
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=64G
+#SBATCH --chdir=/shared/home/juan.arias/R-TTRV
 #SBATCH --output=base-evals/logs/%x-%j.out
 #SBATCH --error=base-evals/logs/%x-%j.err
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_DIR="${REPO_DIR:-/shared/home/juan.arias/R-TTRV}"
 cd "$REPO_DIR"
 
 if [[ -n "${CONDA_ENV:-}" ]]; then
