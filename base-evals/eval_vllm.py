@@ -7,6 +7,7 @@ import argparse
 import csv
 import fcntl
 import json
+import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -67,6 +68,22 @@ def batched(items: list[dict], batch_size: int):
         yield items[start : start + batch_size]
 
 
+def log_runtime_environment() -> None:
+    print(f"VLLM_USE_V1={os.environ.get('VLLM_USE_V1', '')}")
+    try:
+        import torch
+
+        print(f"torch={torch.__version__}")
+        print(f"torch_cuda={torch.version.cuda}")
+        print(f"cuda_available={torch.cuda.is_available()}")
+        if torch.cuda.is_available():
+            index = torch.cuda.current_device()
+            print(f"cuda_device={torch.cuda.get_device_name(index)}")
+            print(f"cuda_capability={torch.cuda.get_device_capability(index)}")
+    except Exception as exc:
+        print(f"torch_runtime_probe_failed={exc}")
+
+
 def update_summary_csv(summary_csv: Path, row: dict) -> None:
     summary_csv.parent.mkdir(parents=True, exist_ok=True)
     mode = "r+" if summary_csv.exists() else "w+"
@@ -112,6 +129,8 @@ def main() -> None:
     args.out_dir.mkdir(parents=True, exist_ok=True)
     output_file = args.out_dir / f"{args.dataset}.jsonl"
     summary_file = args.out_dir / f"summary_{args.dataset}.json"
+
+    log_runtime_environment()
 
     llm = LLM(
         model=args.model,

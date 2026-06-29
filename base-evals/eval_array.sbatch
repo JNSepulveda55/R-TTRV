@@ -23,7 +23,11 @@ fi
 export HF_HOME=/shared/models/huggingface
 export HF_HUB_CACHE=/shared/models/huggingface/hub
 export TRANSFORMERS_CACHE=/shared/models/huggingface/hub
-export VLLM_USE_V1=1
+if [[ -n "${VLLM_USE_V1:-}" ]]; then
+  export VLLM_USE_V1
+else
+  unset VLLM_USE_V1
+fi
 
 mkdir -p base-evals/logs
 
