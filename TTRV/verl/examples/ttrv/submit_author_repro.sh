@@ -21,6 +21,7 @@ TIME_LIMIT="${TIME_LIMIT:-24:00:00}"
 NO_GPU="${NO_GPU:-2}"
 CPUS_PER_TASK="${CPUS_PER_TASK:-16}"
 MEM="${MEM:-180G}"
+EXCLUDE_NODES="${EXCLUDE_NODES:-mbz-titan-3}"
 
 SBATCH_ARGS=(
   --account "$ACCOUNT"
@@ -36,6 +37,12 @@ SBATCH_ARGS=(
 if [ -n "${QOS:-}" ]; then
   SBATCH_ARGS+=(--qos "$QOS")
 fi
+if [ -n "$EXCLUDE_NODES" ]; then
+  SBATCH_ARGS+=(--exclude "$EXCLUDE_NODES")
+fi
 
 echo "Submitting author-code TTRV jobs for DATASETS=$DATASETS on account=$ACCOUNT partition=$PARTITION gres=gpu:$NO_GPU"
+if [ -n "$EXCLUDE_NODES" ]; then
+  echo "Excluding nodes: $EXCLUDE_NODES"
+fi
 sbatch "${SBATCH_ARGS[@]}" "$SCRIPT_DIR/author_repro.sbatch"

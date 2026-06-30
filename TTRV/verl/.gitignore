@@ -122,7 +122,9 @@ tests/e2e/toy_examples/deepspeed/synchronous/output.txt
 *.parquet
 data-author-repro/
 results/author-repro/
+results/author-base-eval/
 logs/author-repro/
+logs/author-base-eval/
 
 
 # local logs

@@ -30,6 +30,14 @@ if [ -z "${XDG_CACHE_HOME:-}" ] || [[ "$XDG_CACHE_HOME" == /var/spool* ]] || [ !
   export XDG_CACHE_HOME="$VERL_DIR/.cache"
 fi
 mkdir -p "$XDG_CACHE_HOME"
+export VLLM_USE_FLASHINFER_SAMPLER="${VLLM_USE_FLASHINFER_SAMPLER:-0}"
+export VLLM_CACHE_ROOT="${VLLM_CACHE_ROOT:-$VERL_DIR/.cache/vllm}"
+export VLLM_FLASHINFER_AUTOTUNE_CACHE_DIR="${VLLM_FLASHINFER_AUTOTUNE_CACHE_DIR:-$VERL_DIR/.cache/vllm-flashinfer-autotune}"
+export FLASHINFER_WORKSPACE_BASE="${FLASHINFER_WORKSPACE_BASE:-$VERL_DIR/.cache/flashinfer-workspace}"
+mkdir -p \
+  "$VLLM_CACHE_ROOT" \
+  "$VLLM_FLASHINFER_AUTOTUNE_CACHE_DIR" \
+  "$FLASHINFER_WORKSPACE_BASE"
 
 if command -v conda >/dev/null 2>&1; then
   eval "$(conda shell.bash hook)"
@@ -161,7 +169,7 @@ LOG_FILE="${LOG_FILE:-$RUN_LOG_DIR/${TASK}_${BACKBONE_SAFE}_${EPOCHS}e_${SLURM_J
 unset VLLM_ATTENTION_BACKEND
 
 echo "AUTHOR_REPRO dataset=$DATASET task=$TASK model=$MODEL train_size=$TRAIN_ROW_COUNT job_id=${SLURM_JOB_ID:-local} log_path=$LOG_FILE data_dir=$DATA_DIR output_dir=$OUTPUT_DIR"
-echo "AUTHOR_REPRO_ENV conda_env=$CONDA_ENV no_gpu=$NO_GPU epochs=$EPOCHS limit_train=${LIMIT_TRAIN:-} limit_test=${LIMIT_TEST:-} vllm_use_v1=${VLLM_USE_V1:-unset}"
+echo "AUTHOR_REPRO_ENV conda_env=$CONDA_ENV no_gpu=$NO_GPU epochs=$EPOCHS limit_train=${LIMIT_TRAIN:-} limit_test=${LIMIT_TEST:-} vllm_use_v1=${VLLM_USE_V1:-unset} vllm_use_flashinfer_sampler=$VLLM_USE_FLASHINFER_SAMPLER"
 
 TRAIN_CMD=(
   python -m verl.trainer.main_ppo
