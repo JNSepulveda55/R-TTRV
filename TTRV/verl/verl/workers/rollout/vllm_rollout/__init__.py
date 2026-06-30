@@ -17,6 +17,7 @@ from importlib.metadata import PackageNotFoundError, version
 ###
 # [SUPPORT AMD:]
 import torch
+from packaging import version as vs
 
 ###
 
@@ -34,7 +35,7 @@ package_version = get_version(package_name)
 ###
 # package_version = get_version(package_name)
 # [SUPPORT AMD:]
-if "AMD" in torch.cuda.get_device_name():
+if torch.cuda.is_available() and "AMD" in torch.cuda.get_device_name():
     import re
 
     package_version = version(package_name)
@@ -43,7 +44,7 @@ else:
     package_version = get_version(package_name)
 ###
 
-if package_version <= "0.6.3":
+if vs.parse(package_version) <= vs.parse("0.6.3"):
     vllm_mode = "customized"
     from .fire_vllm_rollout import FIREvLLMRollout
     from .vllm_rollout import vLLMRollout

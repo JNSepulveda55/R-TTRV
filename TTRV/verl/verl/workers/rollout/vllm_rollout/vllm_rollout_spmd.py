@@ -116,9 +116,9 @@ class vLLMRollout(BaseRollout):
         trust_remote_code = kwargs.get("trust_remote_code", False)
         load_format = "dummy" if config.load_format.startswith("dummy") else config.load_format
 
-        limit_mm_per_prompt = {"image": 10}
+        limit_mm_per_prompt = {"image": 10, "video": 0}
         if config.get("limit_images", None):  # support for multi-image data
-            limit_mm_per_prompt = {"image": config.get("limit_images")}
+            limit_mm_per_prompt = {"image": config.get("limit_images"), "video": 0}
 
         self.inference_engine = LLM(
             model=model_path,

@@ -57,6 +57,30 @@ def _pre_process_inputs(pad_token_id, prompt_token_ids: torch.Tensor) -> List[in
     return token_ids
 
 
+def _read_config_value(config, key):
+    if config is None:
+        return None
+    if isinstance(config, dict):
+        return config.get(key)
+    return getattr(config, key, None)
+
+
+def _get_max_position_embeddings(model_hf_config):
+    max_position_embeddings = _read_config_value(model_hf_config, "max_position_embeddings")
+    if max_position_embeddings is not None:
+        return max_position_embeddings
+
+    for nested_key in ("llm_config", "text_config"):
+        nested_config = _read_config_value(model_hf_config, nested_key)
+        max_position_embeddings = _read_config_value(nested_config, "max_position_embeddings")
+        if max_position_embeddings is not None:
+            return max_position_embeddings
+
+    raise AttributeError(
+        f"{type(model_hf_config).__name__} does not expose max_position_embeddings or nested text config."
+    )
+
+
 class vLLMRollout(BaseRollout):
     def __init__(self, actor_module: nn.Module, config: DictConfig, tokenizer, model_hf_config, **kwargs):
         """A vLLM rollout. It requires the module is supported by the vllm.
@@ -93,7 +117,8 @@ class vLLMRollout(BaseRollout):
                     tensor_model_parallel_size=tensor_parallel_size, num_tp_per_train_tp=num_tp_per_train_tp
                 )
 
-        assert model_hf_config.max_position_embeddings >= config.prompt_length + config.response_length, (
+        max_position_embeddings = _get_max_position_embeddings(model_hf_config)
+        assert max_position_embeddings >= config.prompt_length + config.response_length, (
             "model context length should be greater than total sequence length"
         )
 

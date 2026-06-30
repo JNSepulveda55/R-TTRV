@@ -68,6 +68,9 @@ def hf_tokenizer(name_or_path, correct_pad_token=True, correct_gemma2=True, **kw
         tokenizer.start_image_token="<img>"
         tokenizer.video_token = "<video>"
         tokenizer.context_image_token_id = tokenizer.convert_tokens_to_ids(tokenizer.context_image_token) #for transformers >= 4.52.2
+        tokenizer.start_image_token_id = tokenizer.convert_tokens_to_ids(tokenizer.start_image_token)
+        tokenizer.end_image_token_id = tokenizer.convert_tokens_to_ids(tokenizer.end_image_token)
+        tokenizer.video_token_id = tokenizer.convert_tokens_to_ids(tokenizer.video_token)
         print("tokenizer.context_image_token_id:", tokenizer.context_image_token_id)
         tokenizer.chat_template="""{% for message in messages %}{{'<|im_start|>' + message['role'] + ''}}{% if message['content'] is string %}{{ message['content'] }}{% else %}{% for content in message['content'] %}{% if content['type'] == 'image' %}{{ '<image>' }}{% elif content['type'] == 'video' %}{{ '<video>' }}{% elif content['type'] == 'text' %}{{ content['text'] }}{% endif %}{% endfor %}{% endif %}{{'<|im_end|>'}}{% endfor %}{% if add_generation_prompt %}{{'<|im_start|>assistant' }}{% endif %}"""
     if correct_pad_token:
