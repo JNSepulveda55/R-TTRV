@@ -1,13 +1,14 @@
 #!/bin/bash
-# Submit base-model eval with iteration-friendly defaults.
+# Submit evals against data files built from TTRV's original ABCD options.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 export CONDA_ENV="${CONDA_ENV:-rttrv}"
+export DATA_DIR="${DATA_DIR:-base-evals/data-ttrv-options}"
 export DATASETS="${DATASETS:-dtd}"
-export OUT_DIR="${OUT_DIR:-base-evals/results-generated-options}"
+export OUT_DIR="${OUT_DIR:-base-evals/results-ttrv-options}"
 
 if [[ "${FULL:-0}" == "1" ]]; then
   unset LIMIT

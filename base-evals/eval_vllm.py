@@ -68,6 +68,39 @@ def batched(items: list[dict], batch_size: int):
         yield items[start : start + batch_size]
 
 
+def get_vllm_tokenizer(llm: LLM):
+    if hasattr(llm, "get_tokenizer"):
+        return llm.get_tokenizer()
+    engine = getattr(llm, "llm_engine", None)
+    tokenizer = getattr(engine, "tokenizer", None)
+    if tokenizer is not None:
+        return tokenizer
+    raise RuntimeError("Could not access vLLM tokenizer for prompt decoding.")
+
+
+def decode_prompt_token_ids(tokenizer, prompt_token_ids) -> str:
+    if prompt_token_ids is None:
+        return ""
+    try:
+        return tokenizer.decode(prompt_token_ids, skip_special_tokens=False)
+    except TypeError:
+        return tokenizer.decode(prompt_token_ids)
+
+
+def write_prompt_log(prompt_log, item: dict) -> None:
+    if prompt_log is not None:
+        prompt_log.write(json.dumps(item, ensure_ascii=False) + "\n")
+        prompt_log.flush()
+
+
+def print_prompt_log(item: dict) -> None:
+    print(f"[base-eval prompt_debug] index={item['index']} id={item['id']} dataset={item['dataset']}")
+    print(f"[base-eval raw_prompt] {item['raw_prompt']}")
+    print(f"[base-eval vllm_output_prompt] {item['vllm_output_prompt']}")
+    print(f"[base-eval decoded_prompt_token_ids] {item['decoded_prompt_token_ids']}")
+    print(f"[base-eval response] {item['response']}")
+
+
 def log_runtime_environment() -> None:
     print(f"VLLM_USE_V1={os.environ.get('VLLM_USE_V1', '')}")
     try:
@@ -120,15 +153,36 @@ def main() -> None:
     parser.add_argument("--out-dir", type=Path, default=Path("base-evals/results"))
     parser.add_argument("--max-tokens", type=int, default=8)
     parser.add_argument("--gpu-memory-utilization", type=float, default=0.9)
+    parser.add_argument(
+        "--prompt-log-file",
+        type=Path,
+        default=None,
+        help="Optional JSONL file for debugging the prompt sent to/returned by vLLM.",
+    )
+    parser.add_argument(
+        "--prompt-log-limit",
+        type=int,
+        default=0,
+        help="Number of evaluated examples to write to --prompt-log-file or stdout.",
+    )
+    parser.add_argument(
+        "--log-prompts-to-console",
+        action="store_true",
+        help="Print prompt debugging blocks to the Slurm stdout log.",
+    )
     args = parser.parse_args()
 
     records = read_jsonl(args.records, args.limit)
     if not records:
         raise RuntimeError(f"No records found in {args.records}")
+    if args.prompt_log_file is not None and args.prompt_log_limit <= 0:
+        raise ValueError("--prompt-log-limit must be positive when --prompt-log-file is set.")
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     output_file = args.out_dir / f"{args.dataset}.jsonl"
     summary_file = args.out_dir / f"summary_{args.dataset}.json"
+    if args.prompt_log_file is not None:
+        args.prompt_log_file.parent.mkdir(parents=True, exist_ok=True)
 
     log_runtime_environment()
 
@@ -139,10 +193,12 @@ def main() -> None:
         limit_mm_per_prompt={"image": 1},
         gpu_memory_utilization=args.gpu_memory_utilization,
     )
+    tokenizer = get_vllm_tokenizer(llm) if args.prompt_log_limit > 0 else None
     sampling = SamplingParams(temperature=0.0, max_tokens=args.max_tokens)
 
     correct = 0
     count = 0
+    prompt_log = args.prompt_log_file.open("w", encoding="utf-8") if args.prompt_log_file is not None else None
     with output_file.open("w", encoding="utf-8") as out:
         for batch in tqdm(list(batched(records, args.batch_size)), desc=args.dataset):
             requests = [
@@ -159,6 +215,27 @@ def main() -> None:
                 is_correct = pred == record["answer"]
                 correct += int(is_correct)
                 count += 1
+                if count <= args.prompt_log_limit:
+                    prompt_token_ids = getattr(output, "prompt_token_ids", None)
+                    prompt_item = {
+                        "index": count - 1,
+                        "id": record["id"],
+                        "dataset": record["dataset"],
+                        "answer": record["answer"],
+                        "pred": pred,
+                        "correct": is_correct,
+                        "image_path": record["image_path"],
+                        "raw_prompt": record["prompt"],
+                        "vllm_output_prompt": getattr(output, "prompt", ""),
+                        "prompt_token_ids": prompt_token_ids or [],
+                        "prompt_token_count": len(prompt_token_ids or []),
+                        "decoded_prompt_token_ids": decode_prompt_token_ids(tokenizer, prompt_token_ids),
+                        "response": response,
+                        "metadata": record.get("metadata", {}),
+                    }
+                    write_prompt_log(prompt_log, prompt_item)
+                    if args.log_prompts_to_console:
+                        print_prompt_log(prompt_item)
                 out.write(
                     json.dumps(
                         {
@@ -177,6 +254,8 @@ def main() -> None:
                     + "\n"
                 )
                 out.flush()
+    if prompt_log is not None:
+        prompt_log.close()
 
     summary = {
         "timestamp": datetime.now(timezone.utc).isoformat(),

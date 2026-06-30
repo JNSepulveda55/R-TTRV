@@ -34,6 +34,26 @@ Full Slurm job:
 FULL=1 DATASETS=imagenet_a,dtd,seed,ai2d base-evals/submit_prepare.sh
 ```
 
+## Prepare TTRV-Option Data
+
+This keeps the local Hugging Face images from `base-evals/data/`, but uses the
+exact ABCD prompts, options, and answers from the TTRV test JSONs. It still
+evaluates only the base model; no TTRV training, rewards, or rollouts are used.
+
+Smoke conversion:
+
+```bash
+python base-evals/prepare_ttrv_options_data.py --datasets dtd --limit 8 --overwrite
+```
+
+Full conversion:
+
+```bash
+python base-evals/prepare_ttrv_options_data.py --datasets imagenet_a,dtd,seed,ai2d --overwrite
+```
+
+Converted records are written to `base-evals/data-ttrv-options/`.
+
 ## Evaluate
 
 Smoke test on the Slurm array:
@@ -48,7 +68,50 @@ Full eval:
 FULL=1 DATASETS=imagenet_a,dtd,seed,ai2d base-evals/submit_eval.sh
 ```
 
-Results are written to `base-evals/results/`.
+Results are written to `base-evals/results-generated-options/` by default.
+
+## Evaluate TTRV-Option Data
+
+Smoke test:
+
+```bash
+base-evals/submit_eval_ttrv_options.sh
+```
+
+Full eval:
+
+```bash
+FULL=1 DATASETS=imagenet_a,dtd,seed,ai2d base-evals/submit_eval_ttrv_options.sh
+```
+
+This wrapper submits the same Slurm eval array as above with
+`DATA_DIR=base-evals/data-ttrv-options` and writes to
+`base-evals/results-ttrv-options/` by default.
+
+## Prompt Smoke
+
+To inspect exactly what the base-eval vLLM path exposes as the model prompt,
+run:
+
+```bash
+base-evals/submit_prompt_smoke.sh
+```
+
+By default this submits a `debug` partition job for two `dtd` examples from
+`base-evals/data-ttrv-options`. It writes normal eval outputs to
+`base-evals/results-prompt-smoke/`, Slurm stdout/stderr to `base-evals/logs/`,
+and prompt debug JSONL files to `base-evals/logs/prompt-smoke/`.
+
+The base-eval Slurm path defaults to `VLLM_USE_FLASHINFER_SAMPLER=0` and the
+submit wrappers exclude `mbz-titan-3`, because job 9151 failed there while vLLM
+was initializing the FlashInfer sampler on the Blackwell GPU. Override with
+`VLLM_USE_FLASHINFER_SAMPLER=1` or `EXCLUDE_NODES=` only when debugging that
+runtime path.
+
+Each prompt debug row includes the raw prompt submitted to vLLM, vLLM's returned
+prompt string, decoded `prompt_token_ids` with special tokens preserved, token
+IDs, image path, answer, prediction, and response. The same prompt blocks are
+also printed to the Slurm stdout log by default.
 
 ## Plot Results
 

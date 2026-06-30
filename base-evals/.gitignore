@@ -1,6 +1,11 @@
 __pycache__/
 *.pyc
+.cache/
 data/
+data-ttrv-options/
 results/
+results-generated-options/
+results-prompt-smoke/
+results-ttrv-options/
 logs/*
 !logs/.gitkeep
